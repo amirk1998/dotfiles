@@ -1,0 +1,175 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# Last optimized: February 25, 2025
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+#######################
+# HISTORY CONFIGURATION
+#######################
+HISTCONTROL=ignoreboth:erasedups
+HISTSIZE=50000
+HISTFILESIZE=100000
+HISTIGNORE="ls:bg:fg:history:clear:exit"
+HISTTIMEFORMAT="%F %T "
+
+# Append to the history file, don't overwrite it
+shopt -s histappend
+
+# Write history after each command instead of on shell exit
+# This allows history sharing between multiple terminals
+PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"
+
+#######################
+# SHELL OPTIONS
+#######################
+# Check window size after each command
+shopt -s checkwinsize
+# Autocorrect typos in path names when using cd
+shopt -s cdspell
+# Update LINES and COLUMNS after each command if necessary
+shopt -s checkwinsize
+# Enable extended pattern matching
+shopt -s extglob
+# Enable recursive globbing (** pattern)
+shopt -s globstar 2>/dev/null
+# Append to history on shell exit instead of overwriting
+shopt -s histappend
+
+#######################
+# APPEARANCE
+#######################
+# Set a fancy prompt
+case "$TERM" in
+    xterm-color|*-256color) color_prompt=yes;;
+esac
+
+force_color_prompt=yes
+
+if [ -n "$force_color_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        color_prompt=yes
+    else
+        color_prompt=
+    fi
+fi
+
+# Set variable identifying the chroot
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+if [ "$color_prompt" = yes ]; then
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+unset color_prompt force_color_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+*)
+    ;;
+esac
+
+#######################
+# TOOL CONFIGURATIONS
+#######################
+# FZF Configuration
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash
+export FZF_DEFAULT_COMMAND='fd --type file --hidden --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --inline-info"
+export FZF_CTRL_R_OPTS="--preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview'"
+
+# Enable color support
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+fi
+
+# Less configuration
+export LESS="-R -F -X"
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+#######################
+# HELPER FUNCTIONS
+#######################
+# Enhanced history search function with fzf
+fzf_history() {
+  local selected
+  selected=$(history | fzf --tac --no-sort --exact --query="$*" | sed 's/^\s*[0-9]\+\s*//')
+  READLINE_LINE="${selected}"
+  READLINE_POINT="${#selected}"
+}
+
+# Bind the function to Ctrl+R
+bind -x '"\C-r": fzf_history'
+
+# # Custom cd function with auto-ls
+# function cd() {
+#   builtin cd "$@" && exa --group-directories-first --icons --color=always
+# }
+
+# Extract common archive formats
+extract() {
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1     ;;
+      *.tar.gz)    tar xzf $1     ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar e $1     ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xf $1      ;;
+      *.tbz2)      tar xjf $1     ;;
+      *.tgz)       tar xzf $1     ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)           echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+# Create directory and navigate into it
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+#######################
+# ALIASES & COMPLETIONS
+#######################
+# Source alias definitions
+if [ -f ~/.bash_aliases ]; then
+    source ~/.bash_aliases
+fi
+
+
+# Source bash functions
+if [ -f ~/.bash_functions ]; then
+    source ~/.bash_functions
+fi
+
+
+# Enable programmable completion features
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+
+# Add custom scripts to path
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
+
+

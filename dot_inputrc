@@ -1,0 +1,48 @@
+# ~/.inputrc - Readline initialization file
+
+# Make Tab cycle through possible completions
+TAB: menu-complete
+
+# Make Shift-Tab cycle backward
+"\e[Z": menu-complete-backward
+
+# Ignore case when completing
+set completion-ignore-case on
+
+# Treat hyphens and underscores as equivalent
+set completion-map-case on
+
+# Show all completions as soon as I press tab, even if there's more than one
+set show-all-if-ambiguous on
+set show-all-if-unmodified on
+
+# Display matches for ambiguous patterns at first tab press
+set menu-complete-display-prefix on
+
+# Color files by types
+set colored-stats on
+
+# Append char to indicate type
+set visible-stats on
+
+# Mark symlinked directories
+set mark-symlinked-directories on
+
+# Color the common prefix
+set colored-completion-prefix on
+
+# Show all possibilities at once
+set page-completions off
+
+# Useful editing command bindings
+"\e[1;5C": forward-word   # Ctrl+right
+"\e[1;5D": backward-word  # Ctrl+left
+"\e[3;5~": kill-word      # Ctrl+delete
+"\C-h": backward-kill-word # Ctrl+backspace
+
+# History search with up and down arrows
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Insert the arguments from the last command
+"\M-p": "$(fc -ln -1)\C-e"

@@ -1,0 +1,424 @@
+# ~/.bash_aliases: Alias definitions for bash shell
+# Last updated: February 25, 2025
+
+#######################
+# IMPROVED COMMANDS
+#######################
+# Modern alternatives to core commands
+# alias ls='exa --group-directories-first'
+# alias ll='exa -l --group-directories-first'
+# alias la='exa -la --group-directories-first'
+# alias lt='exa -la --tree --level=2 --group-directories-first'
+
+alias ls='exa --group-directories-first --icons --color=always -la'
+# List format with permissions, size, modified date
+alias ll='exa --group-directories-first --icons --color=always -l'
+# List all files including hidden
+alias la='exa --group-directories-first --icons --color=always'
+# Tree view (2 levels deep)
+alias lt='exa --group-directories-first --icons --color=always -la --tree --level=2'
+# Sort by size (largest first)
+alias lss='exa --group-directories-first --icons --color=always -l --sort=size --reverse'
+# Sort by file extension/type
+alias lst='exa --group-directories-first --icons --color=always -l --sort=extension'
+# Sort by modified time (newest first)
+alias lsm='exa --group-directories-first --icons --color=always -l --sort=modified --reverse'
+# List only directories
+alias lsd='exa --icons --color=always -lD'
+# Show git status for files in git repositories
+alias lsg='exa --group-directories-first --icons --color=always -l --git'
+# Long detailed format with all information
+alias lll='exa --group-directories-first --icons --color=always -la --header --links --git'
+# Grid layout (useful for wide terminals)
+alias lg='exa --group-directories-first --icons --color=always --grid'
+
+alias cat='bat'
+alias find='fd'
+alias grep='rg'
+alias diff='diff --color=auto'
+alias df='df -h'
+alias du='du -h'
+alias free='free -h'
+alias top='htop'
+
+#######################
+# NETWORKING ALIASES
+#######################
+# TCP/UDP port related aliases from your original config
+alias spt="sudo netstat -tunlp | awk '{split(\$4, a, \":\"); if(a[2]!=\"\") print a[2]}' | sort -n | uniq"
+alias spd="sudo netstat -tunlp | awk '{split(\$4, a, \":\"); if(a[2]!=\"\") print a[2], \$0}' | sort -n"
+alias ssp="sudo ss -tunlp | awk 'NR>1 {split(\$5,a,\":\"); if(a[2]!=\"\") print a[2]}' | sort -n | uniq"
+alias sspd="sudo ss -tunlp | awk 'NR>1 {split(\$5,a,\":\"); if(a[2]!=\"\") print a[2], \$0}' | sort -n"
+
+# Additional networking aliases
+alias myip='curl -s ifconfig.me'
+alias localip="ip -br addr show | grep -v lo | grep -oP '(\d+\.){3}\d+'"
+alias ports='netstat -tulanp'
+alias ping='ping -c 5'
+alias wget='wget -c'
+alias iptlist='sudo /sbin/iptables -L -n -v --line-numbers'
+alias tcpdump-http='sudo tcpdump -A -s 10240 "tcp port 80 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)"'
+alias proxy='ssh -D 1080 -q -C -N'
+
+#######################
+# NAVIGATION SHORTCUTS
+#######################
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias home='cd ~'
+
+#######################
+# GIT SHORTCUTS
+#######################
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias glog='git log --oneline --graph --decorate'
+alias gco='git checkout'
+alias gb='git branch'
+alias grb='git rebase'
+alias grs='git reset'
+alias gcp='git cherry-pick'
+alias gst='git stash'
+alias gstp='git stash pop'
+alias gsta='git stash apply'
+alias gcl='git clone'
+alias gclean='git clean -fd'
+alias gfix='git commit --amend'
+alias gwip='git add -A && git commit -m "WIP"'
+alias grh='git reset --hard'
+alias grhh='git reset --hard HEAD'
+
+#######################
+# KUBERNETES ALIASES
+#######################
+alias k='kubectl'
+alias kgp='kubectl get pods'
+alias kgpa='kubectl get pods --all-namespaces'
+alias kgd='kubectl get deployments'
+alias kgs='kubectl get services'
+alias kgi='kubectl get ingress'
+alias kge='kubectl get events --sort-by=".lastTimestamp"'
+alias kgn='kubectl get nodes'
+alias kgpv='kubectl get pv'
+alias kgpvc='kubectl get pvc'
+alias kgsec='kubectl get secrets'
+alias kgcm='kubectl get configmaps'
+alias kgh='kubectl get hpa'
+alias kgtop='kubectl top'
+alias kgtopp='kubectl top pods'
+alias kgtopn='kubectl top nodes'
+
+# Detailed output and common operations
+alias kdp='kubectl describe pod'
+alias kdd='kubectl describe deployment'
+alias kdn='kubectl describe node'
+alias kds='kubectl describe service'
+alias kdi='kubectl describe ingress'
+alias kl='kubectl logs'
+alias klf='kubectl logs -f'
+alias kaf='kubectl apply -f'
+alias kdf='kubectl delete -f'
+alias keti='kubectl exec -ti'
+alias krr='kubectl rollout restart'
+alias krs='kubectl rollout status'
+alias kpf='kubectl port-forward'
+
+# Context and namespace management
+alias kgc='kubectl config get-contexts'
+alias kuc='kubectl config use-context'
+alias kcc='kubectl config current-context'
+alias kns='kubectl config set-context --current --namespace'
+alias kwns='watch kubectl get pods -o wide'
+
+# Complex operations made simple
+alias knrunning='kubectl get pods --field-selector=status.phase!=Running'
+alias kfails='kubectl get pods --field-selector=status.phase==Failed'
+alias kevicted='kubectl get pods --field-selector=status.phase==Failed | grep Evicted'
+alias kremevicted='kubectl get pods --field-selector=status.phase==Failed | grep Evicted | awk "{print \$1}" | xargs kubectl delete pod'
+alias kgpwide='kubectl get pods -o wide'
+alias kgpwatch='watch kubectl get pods'
+alias kdrain='kubectl drain --ignore-daemonsets --delete-emptydir-data'
+alias kcordon='kubectl cordon'
+alias kuncordon='kubectl uncordon'
+
+#######################
+# TERRAFORM ALIASES
+#######################
+alias tf='terraform'
+alias tfi='terraform init'
+alias tfp='terraform plan'
+alias tfa='terraform apply'
+alias tfaa='terraform apply -auto-approve'
+alias tfd='terraform destroy'
+alias tfda='terraform destroy -auto-approve'
+alias tfo='terraform output'
+alias tfs='terraform state'
+alias tfsl='terraform state list'
+alias tfss='terraform state show'
+alias tfv='terraform validate'
+alias tfw='terraform workspace'
+alias tfws='terraform workspace select'
+alias tfwl='terraform workspace list'
+alias tfwn='terraform workspace new'
+alias tffmt='terraform fmt -recursive'
+alias tflog='TF_LOG=DEBUG terraform'
+
+#######################
+# DOCKER SHORTCUTS
+#######################
+alias dps='docker ps'
+alias dpsa='docker ps -a'
+alias di='docker images'
+alias dexec='docker exec -it'
+alias dlogs='docker logs'
+alias dlogf='docker logs -f'
+alias dkill='docker kill'
+alias drm='docker rm'
+alias drmi='docker rmi'
+alias dprune='docker system prune -a'
+alias dvprune='docker volume prune'
+alias dcp='docker container prune'
+alias dip='docker image prune'
+alias dstats='docker stats'
+alias dtop='docker stats'
+alias dinspect='docker inspect'
+alias dbuild='docker build -t'
+alias dcompose='docker-compose'
+alias dcup='docker-compose up -d'
+alias dcdown='docker-compose down'
+alias dcrestart='docker-compose restart'
+alias dclogs='docker-compose logs -f'
+alias dcps='docker-compose ps'
+alias dcpull='docker-compose pull'
+alias dcbuild='docker-compose build'
+alias dcexec='docker-compose exec'
+
+#######################
+# AWS SHORTCUTS
+#######################
+alias awsprofile='export AWS_PROFILE='
+alias awswho='aws sts get-caller-identity'
+alias awss3ls='aws s3 ls'
+alias awss3cp='aws s3 cp'
+alias awss3sync='aws s3 sync'
+alias awsec2ls='aws ec2 describe-instances --query "Reservations[*].Instances[*].{ID:InstanceId,Type:InstanceType,State:State.Name,Name:Tags[?Key==\`Name\`]|[0].Value}" --output table'
+alias awsec2ip='aws ec2 describe-instances --query "Reservations[*].Instances[*].{ID:InstanceId,IP:PublicIpAddress,Name:Tags[?Key==\`Name\`]|[0].Value}" --output table'
+alias awsecr='aws ecr get-login-password | docker login --username AWS --password-stdin'
+
+#######################
+# SYSTEM SHORTCUTS
+#######################
+alias update='sudo apt update && sudo apt upgrade -y'
+alias install='sudo apt install'
+alias remove='sudo apt remove'
+alias purge='sudo apt purge'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+alias sysupdate='sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y'
+alias meminfo='free -m -l -t'
+alias psmem='ps auxf | sort -nr -k 4'
+alias pscpu='ps auxf | sort -nr -k 3'
+alias cpuinfo='lscpu'
+alias gpumeminfo='nvidia-smi'
+alias diskspace='df -h'
+alias foldersize='du -sh'
+alias openports='ss -tulanp'
+alias services='systemctl list-units --type=service'
+alias jctl='journalctl -xe'
+alias big='find . -type f -size +100M'
+alias watch='watch '
+alias chmox='chmod +x'
+
+#######################
+# FILE OPERATIONS
+#######################
+alias cp='cp -i'                          # Confirm before overwriting
+alias mv='mv -i'                          # Confirm before overwriting
+alias rm='rm -i'                          # Confirm before removing
+alias mkdir='mkdir -p'                    # Create parent directories as needed
+alias find-size='find . -type f -size +100M -exec ls -lh {} \; | awk '"'"'{print $9 ": " $5}'"'"''
+alias biggest='du -sh * | sort -hr | head -n 15'
+alias isodate='date +"%Y-%m-%d"'
+alias zcat='gzip -dc'
+alias copy='xclip -selection clipboard'
+alias paste='xclip -selection clipboard -o'
+alias untar='tar -zxvf'
+alias cleandir='find . -type f -name "*.DS_Store" -delete'
+alias empty-trash='rm -rf ~/.local/share/Trash/*'
+
+#######################
+# PROCESS MANAGEMENT
+#######################
+alias psg='ps aux | grep -v grep | grep -i -e VSZ -e'
+alias pskill='ps aux | grep -v grep | grep $1 | awk "{print \$2}" | xargs kill -9'
+alias killport='kill_by_port() { lsof -ti:$1 | xargs kill -9; }; kill_by_port'
+alias topbiggest='ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head'
+alias psport='ps_port() { lsof -i tcp:$1; }; ps_port'
+alias listcron='crontab -l'
+alias editcron='crontab -e'
+
+#######################
+# SECURITY SHORTCUTS
+#######################
+alias ssl-check='openssl s_client -connect'
+alias ssl-expiry='ssl_expiry() { echo | openssl s_client -servername $1 -connect $1:443 2>/dev/null | openssl x509 -noout -dates; }; ssl_expiry'
+alias genpass='openssl rand -base64 20'
+alias hashcheck='shasum -a 256'
+alias encrypt='gpg -c'
+alias decrypt='gpg'
+alias sshkey-gen='ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)-$(date -I)"'
+alias sshkey-copy='ssh-copy-id -i ~/.ssh/id_ed25519.pub'
+
+#######################
+# ARCHIVE OPERATIONS
+#######################
+alias tarls='tar -tvf'
+alias tarbz2='tar -jcvf'
+alias targz='tar -zcvf'
+alias untarbz2='tar -jxvf'
+alias untargz='tar -zxvf'
+
+#######################
+# QUICK EDITS
+#######################
+alias ebrc='$EDITOR ~/.bashrc'
+alias sbrc='source ~/.bashrc'
+alias ealias='$EDITOR ~/.bash_aliases'
+alias salias='source ~/.bash_aliases'
+alias etmux='$EDITOR ~/.tmux.conf'
+alias envim='$EDITOR ~/.config/nvim/init.lua'
+alias ehost='sudo $EDITOR /etc/hosts'
+alias epath='$EDITOR ~/.bash_profile'
+alias efuncs='$EDITOR ~/.bash_functions'
+alias essh='$EDITOR ~/.ssh/config'
+
+#######################
+# TMUX SHORTCUTS
+#######################
+alias t='tmux'
+alias ta='tmux attach -t'
+alias tl='tmux list-sessions'
+alias tn='tmux new -s'
+alias tk='tmux kill-session -t'
+alias ts='tmux switch -t'
+alias tks='tmux kill-server'
+
+#######################
+# NETWORK DEBUGGING
+#######################
+alias tracert='traceroute'
+alias pingg='ping -c 5 google.com'
+alias ns='nslookup'
+alias dig1='dig +short'
+alias whatismyip='curl ipinfo.io/ip'
+alias whatismyip2='curl ifconfig.me'
+alias httpdump='sudo tcpdump -i any -n -s 0 port 80'
+alias httpsdump='sudo tcpdump -i any -n -s 0 port 443'
+alias speedtest='curl -s https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py | python3 -'
+alias myroute='ip route get 8.8.8.8'
+alias serveo='ssh -R 80:localhost:3000 serveo.net'
+
+#######################
+# DATE & TIME
+#######################
+alias now='date +"%T"'
+alias nowtime='date +"%T"'
+alias nowdate='date +"%Y-%m-%d"'
+alias week='date +%V'
+alias cal='ncal -3'
+alias utc='date -u'
+alias epoch='date +%s'
+alias epochdate='date --date=@$(date +%s)'
+
+#######################
+# FUN & PRODUCTIVITY
+#######################
+alias weather='curl wttr.in'
+alias moon='curl wttr.in/Moon'
+alias dict='curl dict:// -dict.org'
+alias cheat='curl cheat.sh/'
+alias qrify='qrify() { curl qrenco.de/$1; }; qrify'
+alias wiki='wiki() { dig +short txt $1.wp.dg.cx; }; wiki'
+
+#######################
+# LONG COMMANDS
+#######################
+# Find all setuid executables
+alias find-suid='sudo find / -type f -perm -4000 -ls 2>/dev/null'
+
+# List all open ports
+alias check-open-ports='sudo netstat -tulanp'
+
+# CPU intensive processes
+alias cpu-hogs='ps wwaxr -o pid,stat,%cpu,time,command | head -10'
+
+# Memory intensive processes
+alias mem-hogs='ps wwaxm -o pid,stat,%mem,time,command | head -10'
+
+# Clean package cache 
+alias clean-package-cache='sudo apt-get clean && sudo apt-get autoclean && sudo apt-get autoremove'
+
+# Create tar.gz with date
+alias backup-home='tar -czf ~/backup-$(date +%Y%m%d).tar.gz ~ --exclude=.cache'
+
+# Generate a quick server
+alias http-server='python3 -m http.server'
+
+# Git pull all subdirectories
+alias git-pull-all='find . -type d -name .git -exec sh -c "cd \"{}\"/../ && pwd && git pull" \;'
+
+# Find large files
+alias find-large-files='find . -type f -size +100M -exec ls -lh {} \; | awk '\''{print $9 ": " $5}'\'''
+
+# Show IP address connectivity
+alias ipcheck='for ip in $(seq 1 254); do ping -c 1 192.168.1.$ip > /dev/null && echo "192.168.1.$ip UP" || echo "192.168.1.$ip DOWN"; done'
+
+# Analyze directory size
+alias dir-sizes='du -sh .[!.]* * |sort -h'
+
+# Monitor disk I/O
+alias io-monitor='sudo iotop -oPa'
+
+# Monitor logs in real time
+alias follow-syslog='sudo tail -f /var/log/syslog'
+
+# List all users
+alias list-users='cut -d: -f1 /etc/passwd | sort'
+
+# Find all executables in PATH
+alias find-bin='find $PATH -type f -executable | sort -u'
+
+# Find duplicated files
+alias find-dupes='find . -type f -exec md5sum {} \; | sort | uniq -d -w 32'
+
+# Clean Docker system
+alias docker-clean-all='docker system prune -af --volumes'
+
+# Record terminal session
+alias record-terminal='script -a terminal_session_$(date +%Y%m%d_%H%M%S).log'
+
+# Make terminal fullscreen
+alias fullscreen='wmctrl -r :ACTIVE: -b toggle,fullscreen'
+
+# Monitor successful/failed ssh login attempts
+alias ssh-logins='grep "Accepted\|Failed" /var/log/auth.log'
+
+# Get all listening ports with process names
+alias listening-processes='sudo lsof -i -P -n | grep LISTEN'
+
+# Quick replace in files
+alias replace-in-files='replace() { find . -type f -name "*.$1" -exec sed -i "s/$2/$3/g" {} \;; }; replace'
+
+# Find files modified in the last day
+alias recent-files='find . -type f -mtime -1 | grep -v "/.git/"'
+
+# Create SSH tunnel
+alias tunnel='ssh -f -N -L'
+
+# Generate a strong random password
+alias pwgen='openssl rand -base64 16'

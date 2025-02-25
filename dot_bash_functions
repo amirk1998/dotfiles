@@ -1,0 +1,460 @@
+#!/usr/bin/env bash
+# ~/.bash_functions: Useful bash functions for DevOps workflows
+# Last updated: February 25, 2025
+
+# Source this file from .bashrc:
+# [ -f ~/.bash_functions ] && source ~/.bash_functions
+
+#######################
+# KUBERNETES FUNCTIONS
+#######################
+
+# Get all resources in a namespace
+kga() {
+  local namespace=${1:-default}
+  echo "Getting all resources in namespace: $namespace"
+  kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n $namespace
+}
+
+# Switch kubectl context and namespace
+kctx() {
+  if [ $# -eq 0 ]; then
+    kubectl config get-contexts
+  elif [ $# -eq 1 ]; then
+    kubectl config use-context "$1"
+  else
+    kubectl config use-context "$1"
+    kubectl config set-context --current --namespace="$2"
+  fi
+}
+
+# Decode Kubernetes secrets
+ksecret() {
+  if [ $# -ne 2 ]; then
+    echo "Usage: ksecret SECRET_NAME KEY"
+    return 1
+  fi
+  kubectl get secret "$1" -o jsonpath="{.data.$2}" | base64 --decode; echo
+}
+
+# Find pods with high resource usage
+ktop() {
+  kubectl top pods --all-namespaces | sort --reverse --key 3 --numeric | head -10
+}
+
+# Watch pods in all namespaces
+kwatchall() {
+  watch "kubectl get pods --all-namespaces | grep -v Completed"
+}
+
+# Get pod logs from all containers
+klogs_all() {
+  if [ "$#" -ne 1 ]; then
+    echo "Usage: klogs_all POD_NAME"
+    return 1
+  fi
+  local pod=$1
+  for container in $(kubectl get pod $pod -o jsonpath='{.spec.containers[*].name}'); do
+    echo "=== Logs from $container ==="
+    kubectl logs $pod -c $container
+    echo
+  done
+}
+
+# Quickly run debug pod with useful tools
+kdebug() {
+  local namespace=${1:-default}
+  kubectl run troubleshoot --rm -i --tty --image=nicolaka/netshoot -n $namespace -- /bin/bash
+}
+
+# Get events sorted by timestamp
+kevents() {
+  local namespace=${1:-default}
+  kubectl get events --sort-by='.lastTimestamp' -n $namespace
+}
+
+# Deploy a local file directly to a kubectl environment
+krun() {
+  local file=$1
+  kubectl create -f $file --dry-run=client -o yaml | kubectl apply -f -
+}
+
+#######################
+# GIT FUNCTIONS
+#######################
+
+# Clean up local git branches that have been merged
+git_cleanup() {
+  git fetch -p
+  git branch -vv | grep 'origin/.*: gone]' | awk '{print $1}' | xargs git branch -D
+}
+
+# Undo the last commit but keep changes
+git_uncommit() {
+  git reset --soft HEAD~1
+}
+
+# Start a new feature branch
+git_feature() {
+  git checkout -b "feature/$1"
+}
+
+# Create a bugfix branch
+git_bugfix() {
+  git checkout -b "bugfix/$1"
+}
+
+# Interactively rebase the last n commits
+git_fix() {
+  local count=${1:-5}
+  git rebase -i HEAD~$count
+}
+
+# Sync fork with upstream
+git_sync_fork() {
+  local branch=${1:-main}
+  git fetch upstream
+  git checkout $branch
+  git merge upstream/$branch
+}
+
+# Initialize git flow
+git_flow_init() {
+  git flow init -d
+}
+
+# Search git history
+git_find() {
+  git log -p -S "$1"
+}
+
+#######################
+# DOCKER FUNCTIONS
+#######################
+
+# Stop and remove all containers
+docker_clean() {
+  docker stop $(docker ps -a -q) 2>/dev/null || true
+  docker rm $(docker ps -a -q) 2>/dev/null || true
+}
+
+# Clean up dangling images and volumes
+docker_prune_all() {
+  docker system prune -af --volumes
+}
+
+# List all Docker container IPs
+docker_ips() {
+  docker ps -q | xargs -n 1 docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{ .Name }}' | sed 's/ \// /'
+}
+
+# Run container with current directory mounted
+docker_here() {
+  local image=${1:-ubuntu}
+  docker run -it --rm -v $(pwd):/workspace -w /workspace $image
+}
+
+# Show container logs with timestamp
+docker_logs_time() {
+  docker logs -f --timestamps "$1"
+}
+
+# List all container ports
+docker_ports() {
+  docker ps --format "{{.Names}}: {{.Ports}}"
+}
+
+#######################
+# SYSTEM FUNCTIONS
+#######################
+
+# Find the process listening on a given port
+port() {
+  local port=$1
+  lsof -i ":$port" | grep LISTEN
+}
+
+# Kill the process listening on a given port
+killport() {
+  local port=$1
+  lsof -ti ":$port" | xargs kill -9
+}
+
+# Extract any archive
+extract() {
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1     ;;
+      *.tar.gz)    tar xzf $1     ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar e $1     ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xf $1      ;;
+      *.tbz2)      tar xjf $1     ;;
+      *.tgz)       tar xzf $1     ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)           echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+# Create a directory and cd into it
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Show directory sizes sorted
+dirsize() {
+  du -h --max-depth=${1:-1} | sort -hr
+}
+
+# Search history with grep
+hgrep() {
+  history | grep "$@" | grep -v "hgrep $@"
+}
+
+# Simple HTTP server
+serve() {
+  local port=${1:-8000}
+  python3 -m http.server $port
+}
+
+# Search and replace in all files in the current directory
+replace_all() {
+  if [ "$#" -ne 2 ]; then
+    echo "Usage: replace_all search_string replace_string"
+    return 1
+  fi
+  find . -type f -not -path "*/\.*" -exec sed -i "s/$1/$2/g" {} \;
+}
+
+# Create a backup of a file
+backup() {
+  cp "$1"{,.bak}
+}
+
+# Restore from backup
+restore() {
+  cp "$1".bak "$1"
+}
+
+
+# Generate a secure password
+function genpass {
+  local length=${1:-16}
+  openssl rand -base64 48 | cut -c1-$length
+}
+
+# Get public IP
+function myip() {
+  curl -s ifconfig.me
+}
+
+#######################
+# NETWORK FUNCTIONS
+#######################
+
+# Check if host is up
+isup() {
+  local host=${1:-google.com}
+  ping -c 1 $host > /dev/null && echo "$host is up" || echo "$host is down"
+}
+
+# Show all listening ports
+listening() {
+  if [ $# -eq 0 ]; then
+    sudo lsof -i -P -n | grep LISTEN
+  else
+    sudo lsof -i -P -n | grep LISTEN | grep -i "$1"
+  fi
+}
+
+# Get headers from a URL
+headers() {
+  curl -sI "$1"
+}
+
+# Test a URL response time
+curltime() {
+  curl -s -w "\nDNS Lookup: %{time_namelookup}s\nConnect: %{time_connect}s\nTLS Handshake: %{time_appconnect}s\nTotal: %{time_total}s\n" -o /dev/null "$1"
+}
+
+# Show SSL certificate details
+ssl_cert() {
+  echo | openssl s_client -servername "$1" -connect "$1":443 2>/dev/null | openssl x509 -text
+}
+
+# Check SSL expiry date
+ssl_expiry() {
+  echo | openssl s_client -servername "$1" -connect "$1":443 2>/dev/null | openssl x509 -noout -dates
+}
+
+# Scan network for devices
+scan_network() {
+  local subnet=${1:-"192.168.1.0/24"}
+  sudo nmap -sn $subnet
+}
+
+#######################
+# AWS FUNCTIONS
+#######################
+
+# List EC2 instances with specific details
+aws_ec2_list() {
+  aws ec2 describe-instances \
+    --query "Reservations[*].Instances[*].{Name:Tags[?Key=='Name'].Value|[0],InstanceId:InstanceId,State:State.Name,Type:InstanceType,IP:PublicIpAddress,PrivateIP:PrivateIpAddress}" \
+    --output table
+}
+
+# Get RDS instances
+aws_rds_list() {
+  aws rds describe-db-instances \
+    --query "DBInstances[*].{DBName:DBName,Engine:Engine,Status:DBInstanceStatus,Endpoint:Endpoint.Address}" \
+    --output table
+}
+
+# Switch AWS profile
+aws_profile() {
+  export AWS_PROFILE=$1
+  aws sts get-caller-identity
+}
+
+# Get ECS services in a cluster
+aws_ecs_services() {
+  local cluster=${1:-default}
+  aws ecs list-services --cluster $cluster | jq -r '.serviceArns[]'
+}
+
+# Get CloudWatch logs for a Lambda function
+aws_lambda_logs() {
+  local function_name=$1
+  aws logs filter-log-events \
+    --log-group-name /aws/lambda/$function_name \
+    --limit 20 \
+    --query 'events[*].message' \
+    --output text
+}
+
+#######################
+# TERRAFORM FUNCTIONS
+#######################
+
+# Clean Terraform directory
+tf_clean() {
+  rm -rf .terraform/ terraform.tfstate* .terraform.lock.hcl
+}
+
+# Initialize new Terraform project with remote backend
+tf_init_remote() {
+  local bucket=$1
+  local key=${2:-terraform.tfstate}
+  local region=${3:-us-east-1}
+  
+  cat > backend.tf << EOF
+terraform {
+  backend "s3" {
+    bucket = "$bucket"
+    key    = "$key"
+    region = "$region"
+  }
+}
+EOF
+  terraform init
+}
+
+# Apply terraform with auto-approve but check plan first
+tf_safe_apply() {
+  terraform plan -out=tfplan && 
+  echo "Plan looks good? Apply? (y/N)" &&
+  read answer && 
+  if [ "$answer" == "y" ]; then
+    terraform apply tfplan
+  else
+    echo "Aborting apply"
+  fi
+  rm -f tfplan
+}
+
+#######################
+# DEVELOPMENT FUNCTIONS
+#######################
+
+# Create Python virtual environment
+venv() {
+  python3 -m venv .venv
+  echo "Activate with: source .venv/bin/activate"
+}
+
+# Start a Python project
+pyproject() {
+  mkdir -p "$1"/src
+  cd "$1"
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install --upgrade pip
+  touch README.md
+  touch src/__init__.py
+  echo "Python project $1 initialized"
+}
+
+# Monitor file changes and run a command
+watch_run() {
+  local pattern=${1:-"."}
+  local command=${2:-"echo 'File changed'"}
+  while inotifywait -e modify -r $pattern; do
+    eval $command
+  done
+}
+
+# Start a Node.js project
+npm_init() {
+  mkdir -p "$1"
+  cd "$1"
+  npm init -y
+  mkdir -p src
+  touch README.md
+  echo "Node.js project $1 initialized"
+}
+
+# Run SQL query against database
+run_sql() {
+  local db=${1:-postgres}
+  local query=$2
+  
+  case $db in
+    postgres|pg)
+      psql -c "$query"
+      ;;
+    mysql)
+      mysql -e "$query"
+      ;;
+    *)
+      echo "Unknown database type: $db"
+      ;;
+  esac
+}
+
+# Time how long a command takes to run
+timeit() {
+  time -p $@
+}
+
+#######################
+# UTILITY FUNCTIONS
+#######################
+
+# Convert video to GIF
+video2gif() {
+  local input=$1
+  local output=${2:-output.gif}
+  local scale=${3:-640}
+  ffmpeg -i "$input" -vf "fps=10,scale=$scale:-1:flags=lanczos" -c:v pam -f image2pipe - | convert -delay 10 - -layers optimize -loop 0 "$output"
+}
+
+# # Convert markdown to PDF
+# md2pdf() {
+#   local
