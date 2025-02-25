@@ -4,11 +4,6 @@
 #######################
 # IMPROVED COMMANDS
 #######################
-# Modern alternatives to core commands
-# alias ls='exa --group-directories-first'
-# alias ll='exa -l --group-directories-first'
-# alias la='exa -la --group-directories-first'
-# alias lt='exa -la --tree --level=2 --group-directories-first'
 
 alias ls='exa --group-directories-first --icons --color=always -la'
 # List format with permissions, size, modified date
@@ -68,6 +63,97 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 alias .....='cd ../../../..'
 alias home='cd ~'
+
+
+
+
+#######################
+# ENHANCED SYSTEMCTL ALIASES
+#######################
+# Mask/unmask services
+alias smask='sudo systemctl mask'
+alias sunmask='sudo systemctl unmask'
+# List all enabled services
+alias sle='systemctl list-unit-files --state=enabled'
+# List all disabled services
+alias sld='systemctl list-unit-files --state=disabled'
+# Check service dependencies
+alias ssd='sudo systemctl list-dependencies'
+# Edit service unit file
+alias sedit='sudo systemctl edit --full'
+# Show the last 20 systemd boot logs
+alias slastboot='journalctl --boot=-1 -n 20'
+
+#######################
+# ENHANCED JOURNALCTL ALIASES
+#######################
+# Filter by priority levels
+alias jcrit='sudo journalctl -p crit'
+alias jwarn='sudo journalctl -p warning'
+alias jinfo='sudo journalctl -p info'
+# Show kernel messages only
+alias jkernel='sudo journalctl -k'
+# Show logs from previous boot
+alias jprev='sudo journalctl -b -1'
+# Watch specific service logs in real-time (specify service)
+alias jwatch='jwatch() { sudo journalctl -f -u "$1"; }; jwatch'
+# View logs by time window
+alias jlast1h='sudo journalctl --since "1 hour ago"'
+alias jlast24='sudo journalctl --since "24 hour ago"'
+# View systemd boot time statistics
+alias boottime='systemd-analyze'
+alias bootblame='systemd-analyze blame'
+alias bootplot='systemd-analyze plot > boot-plot.svg'
+
+#######################
+# DEVOPS SPECIFIC ALIASES
+#######################
+# Prometheus & Grafana
+alias prom-targets='curl -s localhost:9090/api/v1/targets | jq'
+alias prom-rules='curl -s localhost:9090/api/v1/rules | jq'
+alias prom-alerts='curl -s localhost:9090/api/v1/alerts | jq'
+
+# DNS tools
+alias dig-all='dig +nocmd +noall +answer +multiline any'
+alias dns-flush='sudo systemd-resolve --flush-caches'
+alias dns-stats='sudo systemd-resolve --statistics'
+
+# HTTP/API testing
+alias curljson='curl -s -H "Content-Type: application/json"'
+alias curlpost='curl -s -X POST -H "Content-Type: application/json"'
+alias curldelete='curl -s -X DELETE'
+alias curltrace='curl -svo /dev/null'
+
+# Certificate management
+alias cert-create='openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes'
+alias cert-view='openssl x509 -in'
+alias cert-server='openssl s_server -key key.pem -cert cert.pem -accept 8443 -www'
+
+# Ansible shortcuts
+alias ap='ansible-playbook'
+alias ainv='ansible-inventory --list'
+alias agg='ansible-galaxy'
+alias alint='ansible-lint'
+
+#######################
+# PERFORMANCE MONITORING
+#######################
+# CPU/Memory real-time monitoring
+alias cpu-heatmap='mpstat -P ALL 1 | awk '"'"'/Average:/ && $3 ~ /[0-9]/ {printf "%s%s CPU %s: %.1f%%\n", $3, (($4>50)? "\033[31m" : ($4>20)? "\033[33m" : "\033[32m"), $3, $4, "\033[0m"}'"'"
+alias mem-heatmap='free -h | awk '"'"'/^Mem:/ {print "Memory: " (($3/$2 > 0.8) ? "\033[31m" : ($3/$2 > 0.6) ? "\033[33m" : "\033[32m"), $3"/"$2 " (" int($3/$2*100) "%)", "\033[0m"}'"'"
+alias disk-heatmap='df -h | grep "^/dev" | awk '"'"'{gsub(/%/,""); if($5 > 90) color="\033[31m"; else if($5 > 75) color="\033[33m"; else color="\033[32m"; print color $6 ": " $5 "% used\033[0m"}'"'"
+
+# IO monitoring
+alias io-top='sudo iotop -oPa'
+alias io-stat='iostat -xz 1'
+
+# Advanced process monitoring
+alias ps-tree='ps auxf'
+alias ps-parent='pstree -pau'
+alias ps-threads='ps -eLf'
+alias ps-sort-cpu='ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -10'
+alias ps-sort-mem='ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%mem | head -10'
+
 
 #######################
 # GIT SHORTCUTS
@@ -422,3 +508,47 @@ alias tunnel='ssh -f -N -L'
 
 # Generate a strong random password
 alias pwgen='openssl rand -base64 16'
+
+
+
+
+###########################################################
+##################### COMMENTED COMMANDS ##################
+###########################################################
+
+# #######################
+# # Systemctl SHORTCUTS
+# #######################
+# alias ss='sudo systemctl status'
+# alias sr='sudo systemctl restart'
+# alias st='sudo systemctl start'
+# alias sp='sudo systemctl stop'
+# alias se='sudo systemctl enable'
+# alias sd='sudo systemctl disable'
+# alias sl='sudo systemctl list-units --type=service'
+# alias slf='sudo systemctl list-units --type=service --state=failed'
+# alias sdr='sudo systemctl daemon-reload'
+
+
+# #######################
+# # Journalctl SHORTCUTS
+# #######################
+# alias jf='sudo journalctl -f'                        # Follow logs
+# alias je='sudo journalctl -e'                        # Jump to end
+# alias jb='sudo journalctl -b'                        # Logs since boot
+# alias jbf='sudo journalctl -b -f'                    # Follow logs since boot
+# alias jl='sudo journalctl --lines=100'               # Last 100 lines
+# alias jlf='sudo journalctl --lines=100 -f'           # Last 100 lines and follow
+# alias jd='sudo journalctl --since=today'             # Today's logs
+# alias jy='sudo journalctl --since=yesterday'         # Yesterday's logs
+# alias jdebug='sudo journalctl -p debug -f'           # Follow debug logs
+# alias jerr='sudo journalctl -p err -f'               # Follow error logs
+
+# #######################
+# # EXA SHORTCUTS
+# #######################
+## Modern alternatives to core commands
+# alias ls='exa --group-directories-first'
+# alias ll='exa -l --group-directories-first'
+# alias la='exa -la --group-directories-first'
+# alias lt='exa -la --tree --level=2 --group-directories-first'

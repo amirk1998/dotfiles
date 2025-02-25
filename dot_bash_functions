@@ -299,6 +299,156 @@ scan_network() {
   sudo nmap -sn $subnet
 }
 
+
+
+
+
+
+
+#######################
+# SYSTEMCTL & JOURNALCTL FUNCTIONS
+#######################
+# Enhanced systemctl functions
+function service_status() {
+    sudo systemctl status "$1"
+}
+
+function service_restart() {
+    echo "Restarting service $1..."
+    sudo systemctl restart "$1"
+    echo "Service status after restart:"
+    sudo systemctl status "$1" --no-pager
+}
+
+function service_logs() {
+    local service="$1"
+    local lines="${2:-100}"
+    sudo journalctl -u "$service" --no-pager -n "$lines"
+}
+
+function service_follow() {
+    sudo journalctl -f -u "$1"
+}
+
+function service_errors() {
+    local service="$1"
+    local since="${2:-today}"
+    sudo journalctl -u "$service" -p err --since="$since"
+}
+
+# Find services by partial name
+function find_service() {
+    systemctl list-units --type=service | grep -i "$1"
+}
+
+# Check all failed services
+function failed_services() {
+    local output=$(systemctl list-units --state=failed)
+    if [[ -z "$output" ]]; then
+        echo "No failed services found."
+    else
+        echo "$output"
+    fi
+}
+
+# Restart and watch logs for a service
+function restart_and_watch() {
+    local service="$1"
+    sudo systemctl restart "$service"
+    echo "Service restarted. Watching logs..."
+    sudo journalctl -f -u "$service"
+}
+
+# Get journalctl logs with timeframe
+function logs_since() {
+    local service="$1"
+    local timeframe="$2"
+    sudo journalctl -u "$service" --since="$timeframe"
+}
+
+# Clear journal logs by size or time
+function clear_journal() {
+    case "$1" in
+        "size")
+            sudo journalctl --vacuum-size="$2"
+            echo "Journal cleared to size $2"
+            ;;
+        "time")
+            sudo journalctl --vacuum-time="$2"
+            echo "Journal cleared to time $2"
+            ;;
+        *)
+            echo "Usage: clear_journal size|time VALUE"
+            echo "Examples:"
+            echo "  clear_journal size 1G"
+            echo "  clear_journal time 1week"
+            ;;
+    esac
+}
+
+# Multi-service status
+function multi_status() {
+    for service in "$@"; do
+        echo "=== $service ==="
+        sudo systemctl status "$service" --no-pager
+        echo ""
+    done
+}
+
+# Show service resource usage
+function service_usage() {
+    local service="$1"
+    echo "CPU usage for $service:"
+    systemd-cgtop -b -n 1 | grep -i "$service"
+    echo "Memory information:"
+    sudo systemctl show "$service" -p MemoryCurrent | awk -F= '{print $2/1024/1024 " MB"}'
+}
+
+# Quickly check service health
+function service_health() {
+    local service="$1"
+    
+    echo "=== Service Health Check: $service ==="
+    
+    # Check if service exists
+    if ! systemctl list-units --type=service | grep -q "$service"; then
+        echo "❌ Service $service does not exist"
+        return 1
+    fi
+    
+    # Check status
+    if systemctl is-active "$service" >/dev/null 2>&1; then
+        echo "✅ Status: Active"
+    else
+        echo "❌ Status: Inactive"
+    fi
+    
+    # Check if enabled
+    if systemctl is-enabled "$service" >/dev/null 2>&1; then
+        echo "✅ Startup: Enabled"
+    else
+        echo "❌ Startup: Disabled"
+    fi
+    
+    # Check for recent failures
+    if journalctl -u "$service" -p err --since="1 hour ago" | grep -q .; then
+        echo "⚠️  Recent errors found"
+    else
+        echo "✅ No recent errors"
+    fi
+    
+    # Show running time
+    uptime=$(systemctl show "$service" -p ActiveEnterTimestamp | awk -F= '{print $2}')
+    if [[ -n "$uptime" ]]; then
+        echo "⏱️  Running since: $uptime"
+    fi
+    
+    # Show last 5 log lines
+    echo -e "\nRecent logs:"
+    journalctl -u "$service" -n 5 --no-pager
+}
+
+
 #######################
 # AWS FUNCTIONS
 #######################
