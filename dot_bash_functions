@@ -164,6 +164,169 @@ docker_ports() {
   docker ps --format "{{.Names}}: {{.Ports}}"
 }
 
+
+# Docker resource searching function using fzf
+docker_search() {
+    local resource_type="${1:-all}"
+    local header=""
+    local command=""
+
+    case "$resource_type" in
+        "images"|"image"|"img")
+            header="REPOSITORY:TAG                    ID                SIZE       CREATED"
+            command="docker images --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedSince}}' | fzf --header=\"$header\" --layout=reverse --height=50% --border | awk '{print \$2}'"
+            ;;
+        "containers"|"container"|"cont")
+            header="CONTAINER ID        NAME                STATUS              IMAGE"
+            command="docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Image}}' | fzf --header=\"$header\" --layout=reverse --height=50% --border | awk '{print \$1}'"
+            ;;
+        "volumes"|"volume"|"vol")
+            header="VOLUME NAME                      DRIVER              SIZE"
+            command="docker volume ls --format '{{.Name}}\t{{.Driver}}' | fzf --header=\"$header\" --layout=reverse --height=50% --border | awk '{print \$1}'"
+            ;;
+        "networks"|"network"|"net")
+            header="NETWORK ID          NAME                DRIVER              SCOPE"
+            command="docker network ls --format '{{.ID}}\t{{.Name}}\t{{.Driver}}\t{{.Scope}}' | fzf --header=\"$header\" --layout=reverse --height=50% --border | awk '{print \$1}'"
+            ;;
+        "all")
+            # Create a menu to select resource type first
+            local resource_options="images\ncontainers\nvolumes\nnetworks"
+            local selected_type=$(echo -e "$resource_options" | fzf --header="Select Docker Resource Type" --height=50% --border)
+            
+            if [[ -n "$selected_type" ]]; then
+                docker_search "$selected_type"
+                return
+            else
+                echo "No resource type selected"
+                return 1
+            fi
+            ;;
+        *)
+            echo "Usage: docker_search [images|containers|volumes|networks|all]"
+            echo "  - images     : Search Docker images"
+            echo "  - containers : Search Docker containers (running and stopped)"
+            echo "  - volumes    : Search Docker volumes"
+            echo "  - networks   : Search Docker networks"
+            echo "  - all        : Interactive menu to select resource type"
+            echo "  If no argument is provided, 'all' is used by default"
+            return 1
+            ;;
+    esac
+
+    # Execute the fzf search command and get the selected ID
+    local selected_id=$(eval "$command")
+    
+    if [[ -n "$selected_id" ]]; then
+        # Copy the ID to clipboard if xclip/pbcopy is available
+        if command -v xclip &> /dev/null; then
+            echo -n "$selected_id" | xclip -selection clipboard
+            echo "ID '$selected_id' copied to clipboard"
+        elif command -v pbcopy &> /dev/null; then
+            echo -n "$selected_id" | pbcopy
+            echo "ID '$selected_id' copied to clipboard"
+        else
+            echo "Selected ID: $selected_id"
+        fi
+        
+        # Show available actions for the selected resource
+        echo ""
+        echo "What would you like to do with this ${resource_type%s}?"
+        
+        case "$resource_type" in
+            "images"|"image"|"img")
+                local options="inspect\nrun\ntag\nremove\nhistory\nnothing"
+                ;;
+            "containers"|"container"|"cont")
+                local options="inspect\nstart\nstop\nrestart\nlogs\nexec\nremove\nnothing"
+                ;;
+            "volumes"|"volume"|"vol")
+                local options="inspect\nremove\nnothing"
+                ;;
+            "networks"|"network"|"net")
+                local options="inspect\nremove\nnothing"
+                ;;
+        esac
+        
+        local action=$(echo -e "$options" | fzf --header="Select action for $selected_id" --height=40% --border)
+        
+        if [[ -n "$action" && "$action" != "nothing" ]]; then
+            case "$action" in
+                "inspect")
+                    docker inspect "$selected_id" | less
+                    ;;
+                "run")
+                    echo "Running: docker run -it --rm $selected_id"
+                    docker run -it --rm "$selected_id"
+                    ;;
+                "tag")
+                    read -p "Enter new tag: " new_tag
+                    if [[ -n "$new_tag" ]]; then
+                        docker tag "$selected_id" "$new_tag"
+                        echo "Tagged $selected_id as $new_tag"
+                    fi
+                    ;;
+                "start")
+                    docker start "$selected_id"
+                    ;;
+                "stop")
+                    docker stop "$selected_id"
+                    ;;
+                "restart")
+                    docker restart "$selected_id"
+                    ;;
+                "logs")
+                    docker logs -f "$selected_id" | less +F
+                    ;;
+                "exec")
+                    docker exec -it "$selected_id" /bin/sh -c "[ -e /bin/bash ] && /bin/bash || /bin/sh"
+                    ;;
+                "remove")
+                    read -p "Are you sure you want to remove this ${resource_type%s}? (y/N): " confirm
+                    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+                        case "$resource_type" in
+                            "images"|"image"|"img")
+                                docker rmi "$selected_id"
+                                ;;
+                            "containers"|"container"|"cont")
+                                docker rm -f "$selected_id"
+                                ;;
+                            "volumes"|"volume"|"vol")
+                                docker volume rm "$selected_id"
+                                ;;
+                            "networks"|"network"|"net")
+                                docker network rm "$selected_id"
+                                ;;
+                        esac
+                    fi
+                    ;;
+                "history")
+                    docker history "$selected_id" | less
+                    ;;
+            esac
+        fi
+    else
+        echo "No selection made"
+    fi
+}
+
+# Quick aliases for the docker_search function - add these to your ~/.bash_aliases file
+
+# Alias for docker_search with images
+alias dsi='docker_search images'
+
+# Alias for docker_search with containers
+alias dsc='docker_search containers'
+
+# Alias for docker_search with volumes
+alias dsv='docker_search volumes'
+
+# Alias for docker_search with networks
+alias dsn='docker_search networks'
+
+# Alias for docker_search with interactive menu
+alias ds='docker_search all'
+
+
 #######################
 # SYSTEM FUNCTIONS
 #######################
@@ -253,6 +416,16 @@ function genpass {
 function myip() {
   curl -s ifconfig.me
 }
+
+
+# Function to show most space-consuming directories
+dir_hogs() {
+    # Set depth to provided argument or default to 2
+    local depth=${1:-2}
+    du -h --max-depth="$depth" | sort -hr | head -20
+}
+
+
 
 #######################
 # NETWORK FUNCTIONS

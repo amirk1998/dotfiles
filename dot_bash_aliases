@@ -233,6 +233,61 @@ alias kdrain='kubectl drain --ignore-daemonsets --delete-emptydir-data'
 alias kcordon='kubectl cordon'
 alias kuncordon='kubectl uncordon'
 
+# Resource usage and monitoring
+alias kresources='kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name,CPU:.spec.containers[*].resources.requests.cpu,MEMORY:.spec.containers[*].resources.requests.memory'
+alias klimits='kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name,CPU:.spec.containers[*].resources.limits.cpu,MEMORY:.spec.containers[*].resources.limits.memory'
+alias kpending='kubectl get pods --field-selector=status.phase=Pending -o wide'
+alias krestarts='kubectl get pods --sort-by=".status.containerStatuses[0].restartCount" -o wide'
+alias khighcpu='kubectl top pods --all-namespaces | sort --reverse --key 3 --numeric | head -10'
+alias khighmem='kubectl top pods --all-namespaces | sort --reverse --key 4 --numeric | head -10'
+
+# Node operations
+alias knodeips='kubectl get nodes -o jsonpath="{.items[*].status.addresses[?(@.type==\"InternalIP\")].address}" | tr " " "\n"'
+alias knodepods='function _knp() { kubectl get pods --all-namespaces -o wide --field-selector spec.nodeName=$1; }; _knp'
+alias ktaints='kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints'
+alias kdrainforce='kubectl drain --force --ignore-daemonsets --delete-emptydir-data'
+
+# Security and RBAC
+alias kaudit='kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.serviceAccountName}" | tr " " "\n" | sort | uniq -c'
+alias krbac='kubectl get roles,rolebindings,clusterroles,clusterrolebindings'
+alias ksas='kubectl get serviceaccounts'
+
+# Debugging
+alias kconcheck='kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" | tr " " "\n" | sort | uniq -c'
+alias kerrors='kubectl get events --field-selector type=Warning --all-namespaces --sort-by=".lastTimestamp"'
+alias kpending='kubectl get pods --field-selector=status.phase=Pending -o wide --all-namespaces'
+alias kreasons='kubectl get pods -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,STATUS:.status.phase,REASON:.status.conditions[*].reason'
+alias kstatusall='kubectl get all --all-namespaces'
+alias khealth='kubectl get componentstatuses'
+
+# Pod and container inspection
+alias kinitc='kubectl get pod $1 -o jsonpath="{.spec.initContainers[*].name}"'
+alias kimagevuls='kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" | tr " " "\n" | sort | uniq'
+alias kenv='function _kenv() { kubectl exec $1 -- env; }; _kenv'
+alias kexplain='kubectl explain --recursive'
+
+# ConfigMaps and Secrets
+alias ksecvalue='function _ksecval() { kubectl get secret $1 -o jsonpath="{.data.$2}" | base64 --decode; echo; }; _ksecval'
+alias kcmvalue='function _kcmval() { kubectl get configmap $1 -o jsonpath="{.data.$2}"; echo; }; _kcmval'
+
+# Network debugging
+alias kendpoints='kubectl get endpoints'
+alias knetpol='kubectl get networkpolicies --all-namespaces'
+alias kserviceips='kubectl get svc --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,EXTERNAL-IP:.spec.externalIPs'
+alias knettest='kubectl run tmp-shell --rm -i --tty --image nicolaka/netshoot -- /bin/bash'
+
+# JSON/YAML output helpers
+alias kyaml='function _kyaml() { kubectl get $1 $2 -o yaml; }; _kyaml'
+alias kjson='function _kjson() { kubectl get $1 $2 -o json; }; _kjson'
+
+# Multi-cluster operations
+alias kclusters='kubectl config get-contexts -o name'
+alias kctxall='function _kctxall() { for ctx in $(kubectl config get-contexts -o name); do echo "Context: $ctx"; kubectl --context $ctx $@; echo; done; }; _kctxall'
+
+# HPA and scaling
+alias kscale='function _kscale() { kubectl scale deployment $1 --replicas=$2; }; _kscale'
+alias khpadetail='kubectl get hpa -o custom-columns=NAME:.metadata.name,REFERENCE:.spec.scaleTargetRef.name,MINPODS:.spec.minReplicas,MAXPODS:.spec.maxReplicas,CURRENTPODS:.status.currentReplicas,DESIREDPODS:.status.desiredReplicas,CURRENTCPU:.status.currentCPUUtilizationPercentage,TARGETCPU:.spec.targetCPUUtilizationPercentage'
+
 #######################
 # TERRAFORM ALIASES
 #######################
@@ -284,6 +339,11 @@ alias dcps='docker-compose ps'
 alias dcpull='docker-compose pull'
 alias dcbuild='docker-compose build'
 alias dcexec='docker-compose exec'
+# Alias to sort Docker images by size (largest to smallest)
+alias dcis='docker images --format "{{.Size}}\t{{.Repository}}:{{.Tag}}\t{{.ID}}" | sort -hr | column -t'
+# Sort by repository name
+alias dcisr='docker images --format "{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.ID}}" | sort | column -t'
+
 
 #######################
 # AWS SHORTCUTS
@@ -319,6 +379,42 @@ alias jctl='journalctl -xe'
 alias big='find . -type f -size +100M'
 alias watch='watch '
 alias chmox='chmod +x'
+
+
+
+
+#######################
+# Storage information
+#######################
+# Interactive disk usage analyzer with ncdu
+alias disk-explore='ncdu --color dark -x'                     # Explore current directory
+alias disk-explore-all='sudo ncdu --color dark -x /'          # Explore entire filesystem (requires sudo)
+alias disk-explore-home='ncdu --color dark -x ~/'             # Explore home directory
+
+# Quick disk usage summaries
+alias disk-usage='df -h'                                      # Show disk usage in human-readable format
+alias disk-usage-inodes='df -i'                               # Show inode usage (useful for many small files)
+alias disk-usage-local='df -hl'                               # Show only local filesystems
+alias disk-full='df -h | grep -v "tmpfs\|devtmpfs" | sort -k5 -hr' # Sort filesystems by usage percentage
+
+# Directory size summaries
+alias dir-size='du -sh'                                       # Show size of current directory
+alias dir-sizes='du -sh *'                                    # Show sizes of all items in current directory
+alias dir-sizes-all='du -sh * .[^.]*'                         # Include hidden files/folders
+alias dir-sizes-sort='du -sh * | sort -hr'                    # Sort by size (largest first)
+alias dir-sizes-top='du -sh * | sort -hr | head -10'          # Show 10 largest items in current dir
+
+# Docker specific storage
+alias docker-disk='docker system df -v'                       # Show Docker disk usage
+alias docker-prune='docker system prune -a'                   # Clean up unused Docker data
+
+# Find large files
+alias find-large='find . -type f -size +100M -exec ls -lh {} \; | sort -k5 -hr' # Find files larger than 100MB
+alias find-largest='find . -type f -exec du -sh {} \; | sort -hr | head -n 20'  # 20 largest files
+
+# System storage overview using lsblk
+alias disk-overview='lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT,LABEL'
+
 
 #######################
 # FILE OPERATIONS
@@ -508,6 +604,7 @@ alias tunnel='ssh -f -N -L'
 
 # Generate a strong random password
 alias pwgen='openssl rand -base64 16'
+
 
 
 
